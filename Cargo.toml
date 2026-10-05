@@ -1,0 +1,13 @@
+[package]
+name = "tfhe-pattern"
+version = "0.2.0"
+edition = "2024"
+
+[dependencies]
+tfhe = { version = "1.8.1", features = ["boolean", "shortint"] }
+rand = "0.9"
+aligned-vec = "0.6"
+dyn-stack = "0.13.2"
+rayon = "1"
+lazy_static = "1.4"
+clap = { version = "4", features = ["derive"] }

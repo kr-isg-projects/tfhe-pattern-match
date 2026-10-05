@@ -1,52 +1,97 @@
 # Efficient Homomorphic String Search via TFHE
 
-This repository provides the source code used in the paper *"Efficient Homomorphic String Search via TFHE"*.
+This repository provides an implementation of the method proposed in the paper **"Efficient Homomorphic String Search via TFHE"**.
+
+Paper: https://www.sciltp.com/journals/pc/articles/2608004913
+
+## Features
+
+- Search over encrypted text using TFHE
+- `O(m log n)` secure character comparisons
+- No leakage of the search result during server-side computation
+- ASCII character support
+- DNA sequence support (`A`, `C`, `G`, `T`)
+- Arbitrary text length and pattern length
 
 ## Requirements
-- SageMath (version 9.5 or later)
-- Rust (rustc version 1.93 or later, for executing the TFHE circuits)
+
+- Rust 1.93 or later
+- SageMath 9.5 or later (for parameter analysis)
 
 ## Dependencies
-Our Rust code depends on:  
-- [TFHE-rs v0.5.3](https://github.com/zama-ai/tfhe-rs/tree/tfhe-rs-0.5.3)  
-- [refined-tfhe-lhe](https://github.com/KAIST-CryptLab/refined-tfhe-lhe) (commit 9b0426e) with some modifications  
 
-Please clone or download these repositories and place them in `tfhe-rs` and `refined-tfhe-lhe` directories respectively. Then, replace or patch the following files as indicated.
+- [TFHE-rs v1.8.1](https://github.com/zama-ai/tfhe-rs)
 
-### Modifications
-- In **TFHE-rs v0.5.3**:  
-  `tfhe-rs/tfhe/src/core_crypto/fft_impl/mod.rs` — additional functions added  
+## Usage
 
-- In **refined-tfhe-lhe**:  
-  `refined-tfhe-lhe/error_analysis/fhe_pattern.sage` — modifications based on `integer_input_lhe.sage`  
+### Search a pattern in ASCII text
 
----
-
-## Reproducing Experimental Results
-To reproduce results shown in Table 2 and Table 3 of the paper, execute:
+ASCII is the default alphabet.
 
 ```bash
-/usr/bin/time -v cargo run --release -- \
-    --seed 0 --log-n 12 --n0 1080 --m 100 --m0 100 --solution 0
+cargo run --release -- \
+  --text 'Call me Ishmael. Some years ago - never mind how long precisely - having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.' \
+  --pattern 'having little or no money in my purse'
 ```
-Where:
 
---log-n : text length in log₂
-
---n0 : text length without padding
-
---m : pattern length
-
---m0 : pattern length without padding
-
-
-## TFHE Parameter Search
-
-To search for TFHE parameters suitable for our circuit, execute:
+### Search a pattern in a DNA sequence
 
 ```bash
-sage fhe_pattern.sage
+cargo run --release -- \
+  --alphabet dna \
+  --text 'TAGGACCTGATCGTACGATCG' \
+  --pattern 'GACCTG'
 ```
+
+### Search a pattern in a large DNA sequence
+
+```bash
+FHE_FIND_PROFILE=1 /usr/bin/time -v cargo run --release -- \
+  --alphabet dna \
+  --seed 0 \
+  --log-n 20 \
+  --n0 100000 \
+  --m 100 \
+  --m0 100
+```
+
+### Search a pattern from files
+
+Example files are provided in `example/`.
+
+```bash
+cargo run --release -- \
+  --text-file example/text.txt \
+  --pattern-file example/pattern.txt
+```
+
+## TFHE Parameter Analysis
+
+```bash
+cd error-analysis
+sage tfhe_pattern.sage
+```
+
+## Version History
+
+See [Releases](https://github.com/kr-isg-projects/tfhe-pattern-match/releases).
+
+### v0.1.0
+
+- DNA sequence support (`A`, `C`, `G`, `T`)
+- Used to reproduce the results reported in the paper
+- 128-bit security with failure probability (FP) below `2^-60`
+- Pattern length limited to `m <= N/2`
+- Based on TFHE-rs v0.5.3 and `refined-tfhe-lhe`
+
+### v0.2.0
+
+- Added ASCII character support
+- Added arbitrary pattern-length support
+- 128-bit security with FP below `2^-128`
+- Updated to TFHE-rs v1.8.1
+- Removed the dependency on `refined-tfhe-lhe`
+- Added direct and file-based text/pattern input
 
 ## License
 
@@ -55,11 +100,13 @@ This software is distributed under the BSD-3-Clause-Clear license.
 ## Patents and Commercial Use
 
 This software may be covered by one or more patents.
-For commercial use of this software or any underlying patented technology,
-a separate patent license may be required.
+
+For commercial use of this software or any underlying patented technology, a separate patent license may be required.
 
 For inquiries regarding commercial use, please contact:
-sh-narisada.at.kddi.com
+
+`sh-narisada.at.kddi.com`
 
 ## Funding
-This work was partially supported by JST K Program, grant number JPMJKP24U2, Japan.
+
+This work was partially supported by JST K Program, grant number `JPMJKP24U2`, Japan.

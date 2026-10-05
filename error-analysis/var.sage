@@ -1,7 +1,6 @@
-# This file (var.sage) is from the repository:
-# https://github.com/KAIST-CryptLab/refined-tfhe-lhe/blob/main/error_analysis/var.sage
+# This file is a modified version of:
+# https://github.com/KAIST-CryptLab/refined-tfhe-lhe/blob/main/error_analysis/integer_input_lhe.sage
 # Original file source: KAIST-CryptLab/refined-tfhe-lhe
-# For review or reference purposes only
 
 # -------- PBS -------- #
 def get_var_pbs(N, k, n, q, Var_GLWE, B_pbs, l_pbs):
@@ -39,7 +38,7 @@ def get_fp_pbs(n, q_prime, N, theta, delta_in, Var_in):
     return Gamma, fp
 
 def get_min_fp_pbs(n, q_prime, N, theta, delta_in):
-    w = 2*N/2^theta # 1 block = 2*Nを2^thetaに分割
+    w = 2*N/2^theta
     Gamma = (delta_in / 2) * (q_prime^2/(12*w^2) - 1/12 + n*q_prime^2/(24*w^2) + n/48)^(-1/2)
     sq2 = 2^(1/2)
     fp = 1 - erf(Gamma/sq2)
@@ -103,11 +102,13 @@ def get_var_ext_prod_inc(N, k, Var_in, B_ep, l_ep):
 def get_var_fft_ext_prod(N, k, q, B_ep, l_ep):
     return 2^(-2*53-2.6) * (k+1) * l_ep * B_ep^2 * q^2 * N^2
 
+
 # -------- LWE KS -------- #
 def get_var_lwe_ks(N, k, q, Var_LWE, B_ksk, l_ksk):
     Var_KS = 0
     Var_KS += get_var_lwe_ks_gadget(N, k, q, B_ksk, l_ksk)
     Var_KS += get_var_lwe_ks_key(N, k, q, Var_LWE, B_ksk, l_ksk)
+
     return Var_KS
 
 def get_var_lwe_ks_gadget(N, k, q, B_ksk, l_ksk):
@@ -120,6 +121,38 @@ def get_var_lwe_ks_key(N, k, q, Var_LWE, B_ksk, l_ksk):
     Var_KSK = q^2 * Var_LWE
 
     return k*N*l_ksk*Var_KSK * (B2_12_ksk + 1/6)
+
+
+# -------- Private Functional Packing KS -------- #
+def get_var_pfpks(n, q, Var_in, Var_GLWE, B_pfpks, l_pfpks):
+    Var_PFPKS = Var_in
+    Var_PFPKS += get_var_pfpks_gadget(n, q, B_pfpks, l_pfpks)
+    Var_PFPKS += get_var_pfpks_key(n, q, Var_GLWE, B_pfpks, l_pfpks)
+
+    return Var_PFPKS
+
+def get_var_pfpks_gadget(n, q, B_pfpks, l_pfpks):
+    Bp_2l_pfpks = B_pfpks^(2*l_pfpks)
+
+    return (n+1)*(q^2-Bp_2l_pfpks)/(12*Bp_2l_pfpks)
+
+def get_var_pfpks_key(n, q, Var_GLWE, B_pfpks, l_pfpks):
+    B2_12_pfpks = (B_pfpks^2 + 2)/12
+    Var_PFPKSK = q^2 * Var_GLWE
+
+    return (n+1)*l_pfpks*B2_12_pfpks*Var_PFPKSK
+
+
+# -------- Native CBS -------- #
+def get_var_cbs(N, k, n, q, Var_GLWE, B_pbs, l_pbs, B_pfpks, l_pfpks):
+    Var_pbs = get_var_pbs(N, k, n, q, Var_GLWE, B_pbs, l_pbs)
+    Var_fft_pbs = get_var_fft_pbs(N, k, n, B_pbs, l_pbs)
+    Var_pbs_tot = Var_pbs + Var_fft_pbs
+
+    Var_cbs = get_var_pfpks(k*N, q, Var_pbs_tot, Var_GLWE, B_pfpks, l_pfpks)
+
+    return Var_cbs
+
 
 # -------- GLWE KS -------- #
 def get_var_glwe_ks(N, k_src, q, Var_dst, B_ksk, l_ksk):
@@ -139,37 +172,13 @@ def get_var_glwe_ks_key(N, k_src, q, Var_dst, B_ksk, l_ksk):
 def get_var_fft_glwe_ks(N, k, B_ksk, l_ksk, b_fft):
     return 2^(-2*53-2.6) * k * l_ksk * B_ksk^2 * b_fft^2 * N^2
 
+
 # -------- HomTrace -------- #
 def get_var_tr(N, k, q, Var_ak, B_auto, l_auto):
     Var_auto = get_var_glwe_ks(N, k, q, Var_ak, B_auto, l_auto)
-    Var_tr = (N^2 - 1)/3 *  Var_auto
+    Var_tr = (N^2 - 1)/3 * Var_auto
 
     return Var_tr
 
 def get_var_fft_tr(N, k, B_ksk, l_ksk, b_fft):
     return (N^2 - 1)/3 * get_var_fft_glwe_ks(N, k, B_ksk, l_ksk, b_fft)
-
-def get_fp_split_fft_glwe_ks(N, k, q, B_ks, l_ks, b_fft):
-    Var_fft_upper = get_var_fft_glwe_ks(N, k, B_ks, l_ks, q / b_fft)
-    Gamma = 1/(2 * Var_fft_upper^(1/2))
-    sq2 = 2^(1/2)
-    fp = 1 - erf(Gamma/sq2)
-
-    return Gamma, fp
-
-# -------- SchemeSwitch -------- #
-def get_var_ss(N, k, q, Var_in, B_ss, l_ss):
-    Var_ss = 0
-    Var_ss += get_var_ss_gadget(N, k, q, B_ss, l_ss)
-    Var_ss += get_var_ss_inc(N, k, Var_in, B_ss, l_ss)
-
-    return Var_ss
-
-def get_var_ss_gadget(N, k, q, B_ss, l_ss):
-    return get_var_ext_prod_gadget(N, k, q, B_ss, l_ss) * N/2
-
-def get_var_ss_inc(N, k, Var_in, B_ss, l_ss):
-    return get_var_ext_prod_inc(N, k, Var_in, B_ss, l_ss)
-
-def get_var_fft_ss(N, k, q, B_ss, l_ss):
-    return get_var_fft_ext_prod(N, k, q, B_ss, l_ss)
